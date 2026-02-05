@@ -1,8 +1,76 @@
-# aws_simple_express
+# Wardrobe API Server
+
+Node.js + Express 기반의 백엔드 API 서버입니다.  
+AWS EC2 환경에서 실행되며, ALB(Application Load Balancer)를 통해 외부 요청을 처리합니다.
+
 
 ## Architecture
 
+Client (curl / browser)
+        ↓
+AWS ALB (HTTP :80)
+        ↓
+EC2 (Ubuntu, Node.js, Express)
+        ↓
+PM2 (Process Manager)
+
+
+현재 단계에서는 프론트엔드 없이 API 서버만 구성되어 있습니다.
+
+## Tech Stack
+
+- Runtime: Node.js
+- Framework: Express
+- Process Manager: PM2
+- Cloud: AWS EC2, ALB
+- OS: Ubuntu 22.04
+
+## Application Structure
+
+server.js        # 서버 엔트리 포인트
+└── src/
+    ├── app.js   # Express 앱 설정
+    └── routes/
+        ├── api.js
+        └── health.js
+
+- server.js: 서버 실행 및 포트 바인딩
+- app.js: 미들웨어 및 라우터 등록
+- routes/: API 엔드포인트 정의
+
+## API Endpoints
+
+### Health Check
+GET /health  
+→ 서버 상태 확인용 엔드포인트
+
+### Hello API
+GET /api/hello  
+→ 테스트용 API
+
+예시 응답
+{
+  "message": "Hello from API",
+  "time": "2026-02-05T07:30:21.123Z"
+}
+
 ## How to Run
+
+1. 환경 변수 설정 (.env)
+2. 의존성 설치
+   npm install
+3. 서버 실행
+   pm2 start server.js --name myapp
+
+서버는 3000 포트에서 실행되며,
+ALB를 통해 외부 접근이 가능합니다.
+
+## Future Work
+
+- API 확장
+- RDS 연동
+- 프론트엔드 연동 시 CORS 설정 추가 예정
+
 
 ## 🛠️ Production Troubleshooting Checklist
 (EC2 + PM2 + Express 기준)
