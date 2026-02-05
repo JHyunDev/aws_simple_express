@@ -88,3 +88,78 @@ PM2로 서버 운영 중
 요청이 구버전 서버로 라우팅되는 문제 발생
 
 lsof, ps 기반으로 진단 후 해결
+
+## Deployment Verification (Runtime Verification)
+운영 환경에서 코드 수정 후
+**“지금 실행 중인 코드가 내가 배포한 그 코드인지”**를
+즉시 검증하기 위한 전략
+
+1️⃣ Server Boot Signature
+
+서버 시작 시 고유 로그 시그니처를 출력하여
+실제 실행 중인 코드 버전을 확인한다.
+
+// server.js or app.js
+console.log('### REAL APP v1.0 LOADED @ 2026-02-05 ###');
+
+검증 방법
+pm2 restart myapp
+pm2 logs myapp
+
+
+로그 출력됨 → 해당 코드 실행 중
+
+로그 없음 → 다른 코드가 실행 중
+
+2️⃣ API Response Fingerprint
+
+API 응답에 버전 정보를 포함하여
+요청이 어떤 코드로 처리되었는지 HTTP 레벨에서 검증한다.
+
+router.get('/hello', (req, res) => {
+  res.json({
+    message: 'Hello from API',
+    version: 'v1.0',
+    time: new Date().toISOString(),
+  });
+});
+
+검증 방법
+curl http://localhost:3000/api/hello
+
+3️⃣ Environment-based Identification (Optional)
+
+여러 인스턴스 또는 운영 환경에서
+서버 식별을 위해 환경변수를 사용한다.
+
+APP_INSTANCE=ec2-prod-1
+
+console.log('APP_INSTANCE:', process.env.APP_INSTANCE);
+
+🔑 Why This Matters
+
+ALB 뒤에 여러 EC2가 있을 때
+
+무중단 배포 시
+
+롤백 또는 핫픽스 직후
+
+캐시 또는 라우팅 문제 의심 시
+
+➡️ “이 요청이 어떤 서버, 어떤 코드에서 처리됐는지”를 즉시 판단 가능
+
+📌 Key Takeaway
+
+단순히 서버가 살아 있는지보다
+“의도한 코드가 실행 중인지”를 확인하는 것이
+운영 환경에서 더 중요하다.
+
+🧠 Real-world Application
+
+본 프로젝트에서는
+
+PM2 기반 서버 운영 환경에서
+
+서버 부팅 로그와 API 응답 식별자를 통해
+
+배포 결과를 즉시 검증하는 전략을 사용했다.
