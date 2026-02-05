@@ -71,6 +71,25 @@ ALB를 통해 외부 접근이 가능합니다.
 - RDS 연동
 - 프론트엔드 연동 시 CORS 설정 추가 예정
 
+## API Usage
+
+### Base URL
+http://<ALB-DNS>
+
+### Endpoints
+
+#### GET /health
+- Description: Server health check
+- Response: 200 OK
+
+#### GET /api/hello
+- Description: Sample API endpoint
+- Response:
+{
+  "message": "Hello from API",
+  "time": "ISO8601 timestamp"
+}
+
 
 ## 🛠️ Production Troubleshooting Checklist
 (EC2 + PM2 + Express 기준)
