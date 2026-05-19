@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>API Test Page</title>
+</head>
+<body>
+  <h1>API 연결 테스트</h1>
+  <button id="btn">GET /api/hello</button>
+
+  <pre id="result"></pre>
+
+  <script>
+    document.getElementById('btn').addEventListener('click', async () => {
+      const res = await fetch('/api/hello');
+      const data = await res.json();
+      document.getElementById('result').textContent =
+        JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>
