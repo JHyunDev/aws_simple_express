@@ -35,4 +35,69 @@ router.get('/items', async (req, res) => { //비동기처리, (클라이언트�
   }
 });
 
+//유저 추가(회원가입)
+router.post('/users', async (req, res) => {
+  try {
+    const { name, email } = req.body; 
+
+    if (!name || !email) { //name혹은 email이 없으면 오류메세지 출력
+      return res.status(400).json({
+        message: 'name and email are required',
+      });
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO users (name, email) VALUES (?, ?)',
+      [name, email]
+    );
+
+    res.status(201).json({
+      message: 'User created',
+      user: {
+        id: result.insertId,
+        name,
+        email,
+      },
+    });
+  } catch (error) {
+    console.error('POST /api/users error:', error);
+    res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+});
+
+// 아이템 생성
+router.post('/items', async (req, res) => {
+  try {
+    const { user_id, name, description } = req.body;
+
+    if (!user_id || !name) {
+      return res.status(400).json({
+        message: 'user_id and name are required',
+      });
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO items (user_id, name, description) VALUES (?, ?, ?)',
+      [user_id, name, description || null]
+    );
+
+    res.status(201).json({
+      message: 'Item created',
+      item: {
+        id: result.insertId,
+        user_id,
+        name,
+        description: description || null,
+      },
+    });
+  } catch (error) {
+    console.error('POST /api/items error:', error);
+    res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+});
+
 module.exports = router;
