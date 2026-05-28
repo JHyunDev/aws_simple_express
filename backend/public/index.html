@@ -16,6 +16,16 @@
 
   <ul id="itemList"></ul>
 
+  <h2>아이템 추가</h2>
+
+  <input id="userIdInput" placeholder="user_id" />
+  <input id="itemNameInput" placeholder="item name" />
+  <input id="itemDescInput" placeholder="description" />
+
+  <button id="createItem">POST /api/items</button>
+
+  <pre id="createResult"></pre>
+
   <script>
   document.getElementById('btn').addEventListener('click', async () => { 
     const res = await fetch('/api/hello');
@@ -41,6 +51,29 @@
       itemList.appendChild(li);
     });
   });
+
+  document.getElementById('createItem').addEventListener('click', async () => {
+    const user_id = document.getElementById('userIdInput').value;
+    const name = document.getElementById('itemNameInput').value;
+    const description = document.getElementById('itemDescInput').value;
+
+    const res = await fetch('/api/items', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id,
+        name,
+        description,
+    }),
+  });
+
+  const data = await res.json();
+
+  document.getElementById('createResult').textContent = JSON.stringify(data, null, 2); //createresult(결과출력영역)을 잡아서 그 태그안에 텍스트(textContent)를 넣어라 & 서버응답이 js객체라서 텍스트로 바꾸기 힘드니까 json문자열로 바꾸어서 넣어라, data뒤에 null,2는 들여쓰기 공백 사용해서 이쁘게 프린트하는부분
+});
+
 </script>
 </body>
 </html>
