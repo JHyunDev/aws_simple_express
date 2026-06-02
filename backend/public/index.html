@@ -35,30 +35,36 @@
       JSON.stringify(data, null, 2);
   });
 
-  async function loadItems() {
-    data.forEach((item) => {
-  const li = document.createElement('li');
+async function loadItems() {
+  const res = await fetch('/api/items');
+  const data = await res.json();
 
-  li.textContent = `${item.id}. ${item.name} - ${item.description} / 작성자: ${item.user_name} `;
+  const itemList = document.getElementById('itemList');
+  itemList.innerHTML = '';
 
-  const deleteBtn = document.createElement('button');
-  deleteBtn.textContent = '삭제';
+  data.forEach((item) => {
+    const li = document.createElement('li');
 
-  deleteBtn.addEventListener('click', async () => {
-    const response = await fetch(`/api/items/${item.id}`, {
-      method: 'DELETE',
+    li.textContent = `${item.id}. ${item.name} - ${item.description} / 작성자: ${item.user_name} `;
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '삭제';
+
+    deleteBtn.addEventListener('click', async () => {
+      const response = await fetch(`/api/items/${item.id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      console.log(result);
+
+      await loadItems();
     });
 
-    const result = await response.json();
-    console.log(result);
-
-    loadItems();
+    li.appendChild(deleteBtn);
+    itemList.appendChild(li);
   });
-
-  li.appendChild(deleteBtn);
-  itemList.appendChild(li);
-});
-  }
+}
 
   document.getElementById('loadItems').addEventListener('click', loadItems);
 
