@@ -100,6 +100,7 @@ router.post('/items', async (req, res) => {
   }
 });
 
+//아이템 삭제 
 router.delete('/items/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -124,6 +125,41 @@ router.delete('/items/:id', async (req, res) => {
 
     res.status(500).json({
       message: 'Failed to delete item',
+      error: err.message,
+    });
+  }
+});
+
+//아이템 수정
+router.put('/items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    const [result] = await pool.query(
+      `
+      UPDATE items
+      SET name = ?, description = ?
+      WHERE id = ?
+      `,
+      [name, description, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: 'Item not found',
+      });
+    }
+
+    res.json({
+      message: 'Item updated successfully',
+      itemId: id,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: 'Update failed',
       error: err.message,
     });
   }
