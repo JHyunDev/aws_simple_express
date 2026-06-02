@@ -36,17 +36,28 @@
   });
 
   async function loadItems() {
-    const res = await fetch('/api/items');
-    const items = await res.json();
+    data.forEach((item) => {
+  const li = document.createElement('li');
 
-    const itemList = document.getElementById('itemList');
-    itemList.innerHTML = '';
+  li.textContent = `${item.id}. ${item.name} - ${item.description} / 작성자: ${item.user_name} `;
 
-    items.forEach((item) => {
-      const li = document.createElement('li');
-      li.textContent = `${item.name} - ${item.user_name}`;
-      itemList.appendChild(li);
+  const deleteBtn = document.createElement('button');
+  deleteBtn.textContent = '삭제';
+
+  deleteBtn.addEventListener('click', async () => {
+    const response = await fetch(`/api/items/${item.id}`, {
+      method: 'DELETE',
     });
+
+    const result = await response.json();
+    console.log(result);
+
+    loadItems();
+  });
+
+  li.appendChild(deleteBtn);
+  itemList.appendChild(li);
+});
   }
 
   document.getElementById('loadItems').addEventListener('click', loadItems);
