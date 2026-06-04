@@ -2,7 +2,73 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>API Test Page</title>
+  <title>Wardrobe API Test</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 40px;
+      color: #222;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      margin-top: 40px;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 8px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin: 4px;
+      border: none;
+      border-radius: 6px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    input {
+      padding: 8px;
+      margin: 4px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    pre {
+      background: #111827;
+      color: #d1fae5;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    #itemList {
+      list-style: none;
+      padding: 0;
+    }
+
+    #itemList li {
+      background: white;
+      margin-bottom: 10px;
+      padding: 14px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+  </style>
 </head>
 <body>
   <h1>API 연결 테스트</h1>
@@ -48,7 +114,8 @@ async function loadItems() {
   data.forEach((item) => { //현재 데이터가 배열이므로 foreach를 사용해 하나씩 꺼냄
     const li = document.createElement('li'); //새로운 html 생성 (<li> <li> 생성)
 
-    li.textContent = `${item.id}. ${item.name} - ${item.description} / 작성자: ${item.user_name} `;
+    const itemText = document.createElement('span');
+    itemText.textContent = `${item.id}. ${item.name} - ${item.description} / 작성자: ${item.user_name}`;
 
     const deleteBtn = document.createElement('button'); // <button></button> 생성
     deleteBtn.textContent = '삭제';
@@ -93,6 +160,7 @@ async function loadItems() {
       await loadItems();
     });
 
+    li.appendChild(itemText);
     li.appendChild(editBtn);
     li.appendChild(deleteBtn);
     itemList.appendChild(li);
