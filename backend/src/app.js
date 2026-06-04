@@ -13,8 +13,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type'],
 }));
 
-app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../public')));
 
 app.use('/api', apiRouter);
 app.use('/health', healthRouter);
