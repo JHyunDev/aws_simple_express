@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const apiRouter = require('./routes/api');
 const healthRouter = require('./routes/health');
@@ -12,6 +13,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type'],
 }));
 
+app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.json());
 
 app.use('/api', apiRouter);
