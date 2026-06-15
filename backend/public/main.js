@@ -7,7 +7,7 @@ document.getElementById('btn').addEventListener('click', async () => {
 });
 
 async function loadItems() {
-  const res = await fetch(`${API_BASE_URL}/api/items`);
+  const res = await fetch(`${API_BASE_URL}/api/items`); // fetch(`${API_BASE_URL}/api/items`)요청 서버로 보냄 -> EC2에 3000번 포트로 접근
   const data = await res.json();
 
   const itemList = document.getElementById('itemList');

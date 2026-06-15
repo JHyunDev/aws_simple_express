@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../services/db');
 const { SELECT } = require('sequelize/lib/query-types');
+const authMiddleware = require('../middlewares/auth');
 
 router.get('/hello', (req, res) => {
   res.json({
@@ -163,6 +164,13 @@ router.put('/items/:id', async (req, res) => {
       error: err.message,
     });
   }
+});
+
+router.get('/me', authMiddleware, (req, res) => {
+  res.json({
+    message: '인증 성공',
+    user: req.user,
+  });
 });
 
 module.exports = router;

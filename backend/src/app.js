@@ -2,9 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
-const apiRouter = require('./routes/api');
-const healthRouter = require('./routes/health');
-const authRouter = require('./routes/auth');
+const apiRouter = require('./routes/api'); //api.js파일 불러오는 준비작업
+const healthRouter = require('./routes/health'); //health.js파일 불러오는 준비작업
+const authRouter = require('./routes/auth'); //auth.js파일 불러오는 준비 작업
 
 const app = express();
 
@@ -17,9 +17,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-app.use('/api', apiRouter);
-app.use('/health', healthRouter);
-app.use('/api/auth', authRouter);
+app.use('/api', apiRouter); // /api요청을 api.js로 넘김
+app.use('/health', healthRouter);// /health요청을 health.js로 넘김
+app.use('/api/auth', authRouter);// /api/auth요청을 auth.js로 넘김
 
 module.exports = app;
 
