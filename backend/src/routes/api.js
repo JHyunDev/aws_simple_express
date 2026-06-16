@@ -11,28 +11,30 @@ router.get('/hello', (req, res) => {
   });
 });
 
-router.get('/items', async (req, res) => { //비동기처리, (클라이언트가 보낸 요청값, 서버가 돌려줄 결과 파일)
-  try{ //const result로 쓰면 mysql2에서 rows와 fields정보가 같이 오므로 const [rows]로 rows정보만 뽑아 사용한다
-    const [rows] = await pool.query(` 
-       SELECT
-        items.id,
-        items.name,
-        items.description,
-        items.created_at,
-        users.id AS user_id,
-        users.name AS user_name,
-        users.email AS user_email
+//아이템 목록 출력
+router.get('/items', authMiddleware, async (req, res) => { //아이템 목록 불러오기전 authmiddleware가 먼저 검증
+  try {
+    const userId = req.user.id; //검증이 완료되었으면 
+
+    const [rows] = await pool.query( //sql문 실행하여 해당 유저의 아이템만 불러옴
+      `
+      SELECT
+        id,
+        user_id,
+        name,
+        description,
+        created_at
       FROM items
-      JOIN users ON items.user_id = users.id
-      ORDER BY items.id DESC        
-    `);
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      `,
+      [userId]
+    );
 
     res.json(rows);
-  } catch(err){
-    console.error('GET /api/items error:', err);
-    res.status(500).json({
-      message: 'Failed to fetch items',
-    });
+  } catch (error) {
+    console.error('GET /items error:', error);
+    res.status(500).json({ message: '아이템 목록 조회 중 서버 오류가 발생했습니다.' });
   }
 });
 
@@ -69,100 +71,93 @@ router.post('/users', async (req, res) => {
 });
 
 // 아이템 생성
-router.post('/items', async (req, res) => {
+router.post('/items', authMiddleware, async (req, res) => { //미들웨어가 검증 & 검증이 성공적이면 해당 유저기준으로 아이템 생성
   try {
-    const { user_id, name, description } = req.body;
+    const userId = req.user.id;
+    const { name, description } = req.body;
 
-    if (!user_id || !name) {
-      return res.status(400).json({
-        message: 'user_id and name are required',
-      });
+    if (!name) {
+      return res.status(400).json({ message: '아이템 이름은 필수입니다.' });
     }
 
     const [result] = await pool.query(
-      'INSERT INTO items (user_id, name, description) VALUES (?, ?, ?)',
-      [user_id, name, description || null]
+      `
+      INSERT INTO items (user_id, name, description)
+      VALUES (?, ?, ?)
+      `,
+      [userId, name, description || null]
     );
 
     res.status(201).json({
-      message: 'Item created',
-      item: {
-        id: result.insertId,
-        user_id,
-        name,
-        description: description || null,
-      },
+      id: result.insertId,
+      user_id: userId,
+      name,
+      description: description || null,
     });
   } catch (error) {
-    console.error('POST /api/items error:', error);
-    res.status(500).json({
-      message: 'Internal server error',
-    });
+    console.error('POST /items error:', error);
+    res.status(500).json({ message: '아이템 생성 중 서버 오류가 발생했습니다.' });
   }
 });
 
 //아이템 삭제 
-router.delete('/items/:id', async (req, res) => {
+router.delete('/items/:id', authMiddleware, async (req, res) => { //미들웨어 인가를 통해 내가 등록한 아이템만 삭제 가능하도록 변경
   try {
-    const { id } = req.params;
+    const userId = req.user.id;
+    const itemId = req.params.id;
 
     const [result] = await pool.query(
-      'DELETE FROM items WHERE id = ?',
-      [id]
+      `
+      DELETE FROM items
+      WHERE id = ? AND user_id = ?
+      `,
+      [itemId, userId]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        message: 'Item not found',
-      });
+      return res.status(403).json({ message: '삭제 권한이 없거나 아이템이 존재하지 않습니다.' });
     }
 
-    res.json({
-      message: 'Item deleted successfully',
-      deletedId: id,
-    });
-  } catch (err) {
-    console.error('[DELETE /items/:id ERROR]', err);
-
-    res.status(500).json({
-      message: 'Failed to delete item',
-      error: err.message,
-    });
+    res.json({ message: '아이템이 삭제되었습니다.' });
+  } catch (error) {
+    console.error('DELETE /items/:id error:', error);
+    res.status(500).json({ message: '아이템 삭제 중 서버 오류가 발생했습니다.' });
   }
 });
 
 //아이템 수정
-router.put('/items/:id', async (req, res) => {
+router.put('/items/:id', authMiddleware, async (req, res) => { // 아이템 아이디와 유저 아이디 모두 동일해야만 수정 가능하도록 변경
   try {
-    const { id } = req.params;
+    const userId = req.user.id;
+    const itemId = req.params.id;
     const { name, description } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: '아이템 이름은 필수입니다.' });
+    }
 
     const [result] = await pool.query(
       `
       UPDATE items
       SET name = ?, description = ?
-      WHERE id = ?
+      WHERE id = ? AND user_id = ?
       `,
-      [name, description, id]
+      [name, description || null, itemId, userId]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        message: 'Item not found',
-      });
+      return res.status(403).json({ message: '수정 권한이 없거나 아이템이 존재하지 않습니다.' });
     }
 
     res.json({
-      message: 'Item updated successfully',
-      itemId: id,
+      message: '아이템이 수정되었습니다.',
+      id: Number(itemId),
+      name,
+      description: description || null,
     });
-  } catch (err) {
-    console.error(err);
-
-    res.status(500).json({
-      message: 'Update failed',
-      error: err.message,
-    });
+  } catch (error) {
+    console.error('PUT /items/:id error:', error);
+    res.status(500).json({ message: '아이템 수정 중 서버 오류가 발생했습니다.' });
   }
 });
 
