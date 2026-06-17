@@ -348,3 +348,117 @@ async function deleteItem(itemId) {
 // 사용자가 "아이템 목록 조회" 버튼을 누르면 loadItems()가 실행된다.
 // -----------------------------------------------------
 document.getElementById('loadItems').addEventListener('click', loadItems);
+
+//회원가입 로직
+document.getElementById('registerBtn').addEventListener('click', async () => {
+  try {
+    const name = document.getElementById('registerNameInput').value;
+    const email = document.getElementById('registerEmailInput').value;
+    const password = document.getElementById('registerPasswordInput').value;
+
+    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+      }),
+    });
+
+    const data = await res.json();
+
+    document.getElementById('registerResult').textContent =
+      JSON.stringify(data, null, 2);
+
+    if (!res.ok) {
+      alert(data.message || '회원가입 실패');
+      return;
+    }
+
+    alert('회원가입 성공! 이제 로그인해보세요.');
+  } catch (error) {
+    console.error('register error:', error);
+    alert('회원가입 중 오류가 발생했습니다.');
+  }
+});
+
+// 로그인 로직
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  try {
+    const email = document.getElementById('loginEmailInput').value;
+    const password = document.getElementById('loginPasswordInput').value;
+
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.message || '로그인 실패');
+      return;
+    }
+
+    localStorage.setItem('token', data.token); //-> 이제부터 브라우저가 jwt토큰저장 후 인가 필요한 상황마다 함께 서버에 보냄
+
+    document.getElementById('loginResult').textContent =
+      JSON.stringify(data, null, 2);
+
+    alert('로그인 성공!');
+
+    await loadMe();
+    await loadItems();
+  } catch (error) {
+    console.error('login error:', error);
+    alert('로그인 중 오류가 발생했습니다.');
+  }
+});
+
+//로그아웃(브라우저 localstorage token 버리는 간단한 방식)
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  localStorage.removeItem('token');
+
+  document.getElementById('loginResult').textContent = '';
+  document.getElementById('meResult').textContent = '';
+  document.getElementById('itemList').innerHTML = '';
+
+  alert('로그아웃되었습니다.');
+});
+
+//내 정보 확인기능 추가
+async function loadMe() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/me`, {
+      headers: {
+        ...getAuthHeaders(),
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById('meResult').textContent =
+        '로그인이 필요합니다.';
+      return;
+    }
+
+    document.getElementById('meResult').textContent =
+      JSON.stringify(data, null, 2);
+  } catch (error) {
+    console.error('loadMe error:', error);
+    alert('내 정보 조회 중 오류가 발생했습니다.');
+  }
+}
+
+document.getElementById('meBtn').addEventListener('click', loadMe);

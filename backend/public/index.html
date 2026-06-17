@@ -6,6 +6,36 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 
+<section>
+  <h2>회원가입</h2>
+
+  <input id="registerNameInput" type="text" placeholder="이름" />
+  <input id="registerEmailInput" type="email" placeholder="이메일" />
+  <input id="registerPasswordInput" type="password" placeholder="비밀번호" />
+
+  <button id="registerBtn">회원가입</button>
+
+  <pre id="registerResult"></pre>
+</section>
+
+<section>
+  <h2>로그인</h2>
+
+  <input id="loginEmailInput" type="email" placeholder="이메일" />
+  <input id="loginPasswordInput" type="password" placeholder="비밀번호" />
+
+  <button id="loginBtn">로그인</button>
+  <button id="logoutBtn">로그아웃</button>
+
+  <pre id="loginResult"></pre>
+</section>
+
+<section>
+  <h2>내 정보</h2>
+  <button id="meBtn">내 정보 확인</button>
+  <pre id="meResult"></pre>
+</section>
+
 <body>
   <h1>API 연결 테스트</h1>
   <button id="btn">GET /api/hello</button>
