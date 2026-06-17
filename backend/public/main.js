@@ -22,11 +22,11 @@
 //   ↓
 // req.user 생성
 // -----------------------------------------------------
-function getAuthHeaders() { //기존의 jwt토큰을 꺼내서 돌려주는 부분을 하나의 함수로 만들어 코드 반복을 줄임
+function getAuthHeaders() { //기존의 jwt토큰을 localstorage에서 꺼내서 돌려주는 부분을 하나의 함수로 만들어 코드 반복을 줄임
   const token = localStorage.getItem('token');
 
   return {
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${token}`, //-> authorization헤더 생성후 반환
   };
 }
 
@@ -56,6 +56,34 @@ function updateAuthUI() {
     guestArea.style.display = 'block';
     userArea.style.display = 'none';
   }
+}
+
+//로그아웃에 필요한 청소 작업 모음
+//localStorage token 삭제
+//화면에 남은 내 정보 삭제
+//아이템 목록 삭제
+//아이템 생성 결과 삭제
+//UI를 비로그인 상태로 전환
+function clearLoginState() {
+  localStorage.removeItem('token');
+
+  document.getElementById('loginResult').textContent = '';
+  document.getElementById('meResult').textContent = '';
+  document.getElementById('itemList').innerHTML = '';
+  document.getElementById('createResult').textContent = '';
+
+  updateAuthUI();
+}
+
+//인증실패처리 함수, 서버현재 응답이 401이면? -> 토큰 삭제 후 로그인 화면으로 전환 & 사용자에게 다시 로그인 안내
+function handleAuthError(response, data) {
+  if (response.status === 401) {
+    clearLoginState();
+    alert(data.message || '로그인이 만료되었습니다. 다시 로그인해주세요.');
+    return true;
+  }
+
+  return false;
 }
 
 // -----------------------------------------------------
@@ -125,6 +153,11 @@ async function loadItems() {
     // 인증 실패, 권한 없음, 서버 에러 등을 브라우저에서 확인하기 위한 처리
     if (!res.ok) {
       console.error('GET /api/items failed:', data);
+
+      if (handleAuthError(res, data)) { //토근 만료시에 handleAuthError호출 -> 토큰 삭제후 로그인 화면으로 전환
+        return;
+      }
+
       alert(data.message || '아이템 목록 조회에 실패했습니다.');
       return;
     }
@@ -227,6 +260,11 @@ document.getElementById('createItem').addEventListener('click', async () => {
 
     if (!res.ok) {
       console.error('POST /api/items failed:', data);
+
+      if (handleAuthError(res, data)) { //401에러(토큰만료)시 handleAuthError호출해 토큰삭제 후 화면전환
+        return;
+      }
+
       alert(data.message || '아이템 생성에 실패했습니다.');
       return;
     }
@@ -302,6 +340,11 @@ async function updateItem(item) {
 
     if (!response.ok) {
       console.error('PUT /api/items/:id failed:', result);
+
+      if (handleAuthError(response, result)) { //토큰만료 에러 처리
+        return;
+      }
+
       alert(result.message || '아이템 수정에 실패했습니다.');
       return;
     }
@@ -354,6 +397,11 @@ async function deleteItem(itemId) {
 
     if (!response.ok) {
       console.error('DELETE /api/items/:id failed:', result);
+
+      if (handleAuthError(response, result)) { //토큰 만료시 처리
+        return;
+      }
+
       alert(result.message || '아이템 삭제에 실패했습니다.');
       return;
     }
@@ -455,16 +503,9 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
   }
 });
 
-//로그아웃(브라우저 localstorage token 버리는 간단한 방식)
+//로그아웃(브라우저 localstorage token 버리는 간단한 방식) -> 이제 위에 만든 clearLoginState()함수를 통해 간편하게 로그아웃 가능
 document.getElementById('logoutBtn').addEventListener('click', () => {
-  localStorage.removeItem('token');
-
-  document.getElementById('loginResult').textContent = '';
-  document.getElementById('meResult').textContent = '';
-  document.getElementById('itemList').innerHTML = '';
-  
-  updateAuthUI();
-
+  clearLoginState();
   alert('로그아웃되었습니다.');
 });
 
@@ -480,8 +521,12 @@ async function loadMe() {
     const data = await res.json();
 
     if (!res.ok) {
+      if (handleAuthError(res, data)) { //토큰 만료시 처리
+        return;
+      }
+
       document.getElementById('meResult').textContent =
-        '로그인이 필요합니다.';
+        data.message || '내 정보 조회에 실패했습니다.';
       return;
     }
 

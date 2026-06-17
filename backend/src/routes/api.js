@@ -106,10 +106,10 @@ router.delete('/items/:id', authMiddleware, async (req, res) => { //미들웨어
     const userId = req.user.id;
     const itemId = req.params.id;
 
-    const [result] = await pool.query(
+    const [result] = await pool.query( //SQL문을 통해 아이템아이디와 해당아이템의 유저id가 내가보낸 아이템 아이디와 내 토큰의 유저id와 맞지 않으면 삭제 불가능하다.
       `
       DELETE FROM items
-      WHERE id = ? AND user_id = ?
+      WHERE id = ? AND user_id = ?  
       `,
       [itemId, userId]
     );

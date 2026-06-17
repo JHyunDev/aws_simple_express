@@ -1,3 +1,4 @@
+//일종의 요청 교차로(Express서버가 여기서 요청을 분류한다)
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 
+//검문소 시스템
 function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization; //-> 요청헤더에서 "Authorization: Bearer eyJhbGciOi..."같은 것들을 찾는다
@@ -20,7 +21,7 @@ function authMiddleware(req, res, next) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET); //-> 이 JWT가 우리 서버의 JWT_SECRET으로 서명된 진짜 토큰인가? 서버가 확인
 
-    req.user = { //-> 요청 객체에 사용자 정보를 붙임
+    req.user = { //-> 검문 통과시 아래와 같이 요청 객체에 사용자 정보를 붙임, 이제부터 API는 유저가 보낸 user_id를 믿지 않고 서버가 검증한 req.user.id를 믿게 된다.
       id: decoded.id,
       email: decoded.email,
     };
