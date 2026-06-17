@@ -32,6 +32,33 @@ function getAuthHeaders() { //기존의 jwt토큰을 꺼내서 돌려주는 부�
 
 
 // -----------------------------------------------------
+// 로그인 여부에 따라 화면 표시/숨김 처리
+// -----------------------------------------------------
+// 브라우저 localStorage에 JWT 토큰이 있으면 로그인 상태로 본다.
+// 토큰이 없으면 비로그인 상태로 본다.
+//
+// 주의:
+// 이건 "프론트 화면 제어"일 뿐이다.
+// 진짜 보안은 백엔드 authMiddleware가 담당한다.
+// -----------------------------------------------------
+function updateAuthUI() {
+  const token = localStorage.getItem('token');
+
+  const guestArea = document.getElementById('guestArea');
+  const userArea = document.getElementById('userArea');
+
+  if (token) {
+    // 로그인 상태
+    guestArea.style.display = 'none';
+    userArea.style.display = 'block';
+  } else {
+    // 비로그인 상태
+    guestArea.style.display = 'block';
+    userArea.style.display = 'none';
+  }
+}
+
+// -----------------------------------------------------
 // 테스트용 API 호출: GET /api/hello
 // -----------------------------------------------------
 // 서버가 정상적으로 살아있는지 확인하는 가장 단순한 요청이다.
@@ -415,6 +442,9 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     document.getElementById('loginResult').textContent =
       JSON.stringify(data, null, 2);
 
+    updateAuthUI();
+
+
     alert('로그인 성공!');
 
     await loadMe();
@@ -432,6 +462,8 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   document.getElementById('loginResult').textContent = '';
   document.getElementById('meResult').textContent = '';
   document.getElementById('itemList').innerHTML = '';
+  
+  updateAuthUI();
 
   alert('로그아웃되었습니다.');
 });
@@ -462,3 +494,10 @@ async function loadMe() {
 }
 
 document.getElementById('meBtn').addEventListener('click', loadMe);
+
+updateAuthUI();
+
+if (localStorage.getItem('token')) {
+  loadMe();
+  loadItems();
+}

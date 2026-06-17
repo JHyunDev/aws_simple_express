@@ -6,60 +6,74 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 
-<section>
-  <h2>회원가입</h2>
-
-  <input id="registerNameInput" type="text" placeholder="이름" />
-  <input id="registerEmailInput" type="email" placeholder="이메일" />
-  <input id="registerPasswordInput" type="password" placeholder="비밀번호" />
-
-  <button id="registerBtn">회원가입</button>
-
-  <pre id="registerResult"></pre>
-</section>
-
-<section>
-  <h2>로그인</h2>
-
-  <input id="loginEmailInput" type="email" placeholder="이메일" />
-  <input id="loginPasswordInput" type="password" placeholder="비밀번호" />
-
-  <button id="loginBtn">로그인</button>
-  <button id="logoutBtn">로그아웃</button>
-
-  <pre id="loginResult"></pre>
-</section>
-
-<section>
-  <h2>내 정보</h2>
-  <button id="meBtn">내 정보 확인</button>
-  <pre id="meResult"></pre>
-</section>
-
 <body>
-  <h1>API 연결 테스트</h1>
-  <button id="btn">GET /api/hello</button>
+  <h1>WARDROBE API 테스트</h1>
 
-  <pre id="result"></pre>
+  <!-- 비로그인 상태에서 보여줄 영역 -->
+  <div id="guestArea">
+    <section>
+      <h2>회원가입</h2>
 
-  <h2>아이템 목록 조회</h2>
+      <input id="registerNameInput" type="text" placeholder="이름" />
+      <input id="registerEmailInput" type="email" placeholder="이메일" />
+      <input id="registerPasswordInput" type="password" placeholder="비밀번호" />
 
-  <button id="loadItems">GET /api/items</button>
+      <button id="registerBtn">회원가입</button>
 
-  <ul id="itemList"></ul>
+      <pre id="registerResult"></pre>
+    </section>
 
-  <h2>아이템 추가</h2>
+    <section>
+      <h2>로그인</h2>
 
-  <input id="userIdInput" placeholder="user_id" />
-  <input id="itemNameInput" placeholder="item name" />
-  <input id="itemDescInput" placeholder="description" />
+      <input id="loginEmailInput" type="email" placeholder="이메일" />
+      <input id="loginPasswordInput" type="password" placeholder="비밀번호" />
 
-  <button id="createItem">POST /api/items</button>
+      <button id="loginBtn">로그인</button>
 
-  <pre id="createResult"></pre>
-  
-  <script src="config.js"></script>
+      <pre id="loginResult"></pre>
+    </section>
+  </div>
+
+  <!-- 로그인 상태에서 보여줄 영역 -->
+  <div id="userArea">
+    <section>
+      <h2>로그인 상태</h2>
+      <button id="logoutBtn">로그아웃</button>
+    </section>
+
+    <section>
+      <h2>내 정보</h2>
+      <button id="meBtn">내 정보 확인</button>
+      <pre id="meResult"></pre>
+    </section>
+
+    <section>
+      <h2>아이템 목록 조회</h2>
+      <button id="loadItems">GET /api/items</button>
+      <ul id="itemList"></ul>
+    </section>
+
+    <section>
+      <h2>아이템 추가</h2>
+
+      <input id="itemNameInput" placeholder="item name" />
+      <input id="itemDescInput" placeholder="description" />
+
+      <button id="createItem">POST /api/items</button>
+
+      <pre id="createResult"></pre>
+    </section>
+  </div>
+
+  <!-- 인증 필요 없는 테스트 영역 -->
+  <section>
+    <h2>서버 연결 테스트</h2>
+    <button id="btn">GET /api/hello</button>
+    <pre id="result"></pre>
+  </section>
+
+  <script src="/config.js"></script>
   <script src="/main.js"></script>
 </body>
-
 </html>
