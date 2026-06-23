@@ -216,6 +216,15 @@ async function loadItems() {
       스타일: ${item.style || ''}
       이미지: ${item.image_url || ''}`;
 
+      let imagePreview = null; // 처음에는 이미지 미리보기가 없다고 가정
+
+      if (item.image_url) { // DB에서 가져온 아이템에 image_url이 있을 때만 이미지를 만들겠다
+        imagePreview = document.createElement('img'); // 브라우저 화면에 넣을 <img> 태그를 JavaScript로 만듦
+        imagePreview.src = item.image_url; //<img src="...">의 src에 S3 이미지 URL을 넣는다. 브라우저는 이 URL을 보고 S3로 이미지 요청을 보낸다.
+        imagePreview.alt = item.name; // 이미지가 안 뜰 때 대신 보여줄 설명.
+        imagePreview.className = 'item-image-preview'; //CSS에서 이미지 크기, 테두리, 둥근 모서리 같은 스타일을 주기 위한 클래스 이름
+      }
+
       // 수정 버튼 생성
       const editBtn = document.createElement('button');
       editBtn.textContent = '수정';
@@ -234,8 +243,28 @@ async function loadItems() {
         await deleteItem(item.id);
       });
 
-      // li 안에 텍스트, 수정 버튼, 삭제 버튼을 순서대로 넣는다.
+      // 이미지 파일 선택 input 생성
+      const imageInput = document.createElement('input');
+      imageInput.type = 'file';
+      imageInput.accept = 'image/*';
+
+      // 이미지 업로드 버튼 생성
+      const uploadImageBtn = document.createElement('button');
+      uploadImageBtn.textContent = '이미지 업로드';
+
+      uploadImageBtn.addEventListener('click', async () => {
+        await uploadItemImage(item.id, imageInput);
+      });
+
+      // li 안에 텍스트, 파일 선택창, 이미지 업로드, 수정 버튼, 삭제 버튼을 순서대로 넣는다.
       li.appendChild(itemText);
+
+      if (imagePreview) {
+        li.appendChild(imagePreview);
+      }
+
+      li.appendChild(imageInput);
+      li.appendChild(uploadImageBtn);
       li.appendChild(editBtn);
       li.appendChild(deleteBtn);
 
@@ -469,6 +498,73 @@ async function deleteItem(itemId) {
   }
 }
 
+// -----------------------------------------------------
+// 아이템 이미지 업로드: POST /api/items/:id/image
+// -----------------------------------------------------
+// JSON이 아니라 multipart/form-data 요청을 보낸다.
+// 그래서 FormData를 사용한다.
+//
+// 주의:
+// FormData를 보낼 때는 Content-Type을 직접 지정하지 않는다.
+// 브라우저가 boundary를 포함해서 자동으로 Content-Type을 만들어야 한다.
+//
+// 요청 흐름:
+// 파일 선택
+//   ↓
+// FormData에 image 파일 담기
+//   ↓
+// POST /api/items/:id/image + Authorization 헤더
+//   ↓
+// Express authMiddleware
+//   ↓
+// multer가 파일 파싱
+//   ↓
+// S3 PutObject
+//   ↓
+// DB items.image_url 업데이트
+// -----------------------------------------------------
+async function uploadItemImage(itemId, fileInput) {
+  try {
+    const file = fileInput.files[0];
+
+    if (!file) {
+      alert('업로드할 이미지 파일을 선택해주세요.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch(`${API_BASE_URL}/api/items/${itemId}/image`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+      },
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('POST /api/items/:id/image failed:', result);
+
+      if (handleAuthError(response, result)) {
+        return;
+      }
+
+      alert(result.message || '이미지 업로드에 실패했습니다.');
+      return;
+    }
+
+    console.log('이미지 업로드 성공:', result);
+    alert('이미지 업로드 성공!');
+
+    await loadItems();
+  } catch (error) {
+    console.error('uploadItemImage error:', error);
+    alert('이미지 업로드 중 오류가 발생했습니다.');
+  }
+}
 
 // -----------------------------------------------------
 // 목록 조회 버튼 이벤트 연결

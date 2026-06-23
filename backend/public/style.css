@@ -64,4 +64,13 @@ pre {
 
 #itemList span {
   white-space: pre-line;
+  .item-image-preview {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  background: #f9fafb;
+  }
 }
+
