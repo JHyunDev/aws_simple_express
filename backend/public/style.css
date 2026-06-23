@@ -61,3 +61,7 @@ pre {
   align-items: center;
   gap: 12px;
 }
+
+#itemList span {
+  white-space: pre-line;
+}

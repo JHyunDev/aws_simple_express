@@ -57,12 +57,21 @@
     <section>
       <h2>아이템 추가</h2>
 
-      <input id="itemNameInput" placeholder="item name" />
-      <input id="itemDescInput" placeholder="description" />
+        <input id="itemNameInput" placeholder="item name" />
+        <input id="itemDescInput" placeholder="description" />
 
-      <button id="createItem">POST /api/items</button>
+        <input id="itemCategoryInput" placeholder="category 예: top, bottom, outer" />
+        <input id="itemSubCategoryInput" placeholder="sub_category 예: shirt, jeans" />
+        <input id="itemColorInput" placeholder="color 예: black, light_blue" />
+        <input id="itemMaterialInput" placeholder="material 예: cotton, denim" />
+        <input id="itemFitInput" placeholder="fit 예: regular, wide, oversized" />
+        <input id="itemSeasonInput" placeholder="season 예: spring, summer, all" />
+        <input id="itemStyleInput" placeholder="style 예: casual, minimal, y2k" />
+        <input id="itemImageUrlInput" placeholder="image_url 예: S3/CloudFront URL" />
 
-      <pre id="createResult"></pre>
+        <button id="createItem">POST /api/items</button>
+
+        <pre id="createResult"></pre>
     </section>
   </div>
 

@@ -22,12 +22,40 @@
 //   ↓
 // req.user 생성
 // -----------------------------------------------------
-function getAuthHeaders() { //기존의 jwt토큰을 localstorage에서 꺼내서 돌려주는 부분을 하나의 함수로 만들어 코드 반복을 줄임
+
+function getAuthHeaders() {//기존의 jwt토큰을 localstorage에서 꺼내서 돌려주는 부분을 하나의 함수로 만들어 코드 반복을 줄임
   const token = localStorage.getItem('token');
 
-  return {
-    Authorization: `Bearer ${token}`, //-> authorization헤더 생성후 반환
+  if (!token) { //토큰이 없으면 -> 아무것도 반환 X
+    return {};
+  }
+
+  return { //토큰이 있으면 ->  Authorization 헤더 반환
+    Authorization: `Bearer ${token}`,
   };
+}
+
+function getInputValue(id) {
+  const value = document.getElementById(id).value.trim();
+
+  if (!value) {
+    return null;
+  }
+
+  return value;
+}
+
+function clearItemForm() { //아이템 정보 입력창 초기화 함수
+  document.getElementById('itemNameInput').value = '';
+  document.getElementById('itemDescInput').value = '';
+  document.getElementById('itemCategoryInput').value = '';
+  document.getElementById('itemSubCategoryInput').value = '';
+  document.getElementById('itemColorInput').value = '';
+  document.getElementById('itemMaterialInput').value = '';
+  document.getElementById('itemFitInput').value = '';
+  document.getElementById('itemSeasonInput').value = '';
+  document.getElementById('itemStyleInput').value = '';
+  document.getElementById('itemImageUrlInput').value = '';
 }
 
 
@@ -79,7 +107,7 @@ function clearLoginState() {
 function handleAuthError(response, data) {
   if (response.status === 401) {
     clearLoginState();
-    alert(data.message || '로그인이 만료되었습니다. 다시 로그인해주세요.');
+    alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
     return true;
   }
 
@@ -178,7 +206,15 @@ async function loadItems() {
       // 현재 백엔드가 사용자별 조회로 바뀌면 user_name이 없을 수 있다.
       // 그래서 작성자 표시는 일단 제거하고 item 기본 정보만 표시한다.
       itemText.textContent =
-        `${item.id}. ${item.name} - ${item.description || ''}`;
+        `${item.id}. ${item.name}
+      설명: ${item.description || ''}
+      분류: ${item.category || ''} / ${item.sub_category || ''}
+      색상: ${item.color || ''}
+      소재: ${item.material || ''}
+      핏: ${item.fit || ''}
+      계절: ${item.season || ''}
+      스타일: ${item.style || ''}
+      이미지: ${item.image_url || ''}`;
 
       // 수정 버튼 생성
       const editBtn = document.createElement('button');
@@ -236,8 +272,16 @@ async function loadItems() {
 // -----------------------------------------------------
 document.getElementById('createItem').addEventListener('click', async () => {
   try {
-    const name = document.getElementById('itemNameInput').value;
-    const description = document.getElementById('itemDescInput').value;
+    const name = getInputValue('itemNameInput');
+    const description = getInputValue('itemDescInput');
+    const category = getInputValue('itemCategoryInput');
+    const sub_category = getInputValue('itemSubCategoryInput');
+    const color = getInputValue('itemColorInput');
+    const material = getInputValue('itemMaterialInput');
+    const fit = getInputValue('itemFitInput');
+    const season = getInputValue('itemSeasonInput');
+    const style = getInputValue('itemStyleInput');
+    const image_url = getInputValue('itemImageUrlInput');
 
     if (!name) {
       alert('아이템 이름을 입력해주세요.');
@@ -253,6 +297,14 @@ document.getElementById('createItem').addEventListener('click', async () => {
       body: JSON.stringify({
         name,
         description,
+        category,
+        sub_category,
+        color,
+        material,
+        fit,
+        season,
+        style,
+        image_url,
       }),
     });
 
@@ -260,11 +312,6 @@ document.getElementById('createItem').addEventListener('click', async () => {
 
     if (!res.ok) {
       console.error('POST /api/items failed:', data);
-
-      if (handleAuthError(res, data)) { //401에러(토큰만료)시 handleAuthError호출해 토큰삭제 후 화면전환
-        return;
-      }
-
       alert(data.message || '아이템 생성에 실패했습니다.');
       return;
     }
@@ -272,13 +319,9 @@ document.getElementById('createItem').addEventListener('click', async () => {
     document.getElementById('createResult').textContent =
       JSON.stringify(data, null, 2);
 
-    // 생성 성공 후 목록을 다시 불러온다.
-    // DB에 새로 저장된 결과를 화면에 즉시 반영하기 위해서다.
     await loadItems();
 
-    // 입력창 초기화
-    document.getElementById('itemNameInput').value = '';
-    document.getElementById('itemDescInput').value = '';
+    clearItemForm();
   } catch (error) {
     console.error('createItem error:', error);
     alert('아이템 생성 중 오류가 발생했습니다.');
@@ -318,6 +361,14 @@ async function updateItem(item) {
   try {
     const newName = prompt('새 아이템 이름:', item.name);
     const newDescription = prompt('새 설명:', item.description || '');
+    const newCategory = prompt('새 category:', item.category || '');
+    const newSubCategory = prompt('새 sub_category:', item.sub_category || '');
+    const newColor = prompt('새 color:', item.color || '');
+    const newMaterial = prompt('새 material:', item.material || '');
+    const newFit = prompt('새 fit:', item.fit || '');
+    const newSeason = prompt('새 season:', item.season || '');
+    const newStyle = prompt('새 style:', item.style || '');
+    const newImageUrl = prompt('새 image_url:', item.image_url || '');
 
     if (!newName) {
       alert('아이템 이름은 비워둘 수 없습니다.');
@@ -332,7 +383,15 @@ async function updateItem(item) {
       },
       body: JSON.stringify({
         name: newName,
-        description: newDescription,
+        description: newDescription || null,
+        category: newCategory || null,
+        sub_category: newSubCategory || null,
+        color: newColor || null,
+        material: newMaterial || null,
+        fit: newFit || null,
+        season: newSeason || null,
+        style: newStyle || null,
+        image_url: newImageUrl || null,
       }),
     });
 
@@ -340,18 +399,12 @@ async function updateItem(item) {
 
     if (!response.ok) {
       console.error('PUT /api/items/:id failed:', result);
-
-      if (handleAuthError(response, result)) { //토큰만료 에러 처리
-        return;
-      }
-
       alert(result.message || '아이템 수정에 실패했습니다.');
       return;
     }
 
     console.log('아이템 수정 성공:', result);
 
-    // 수정 성공 후 목록을 다시 불러와 화면을 최신 상태로 만든다.
     await loadItems();
   } catch (error) {
     console.error('updateItem error:', error);

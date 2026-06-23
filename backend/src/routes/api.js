@@ -1,8 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../services/db');
-const { SELECT } = require('sequelize/lib/query-types');
 const authMiddleware = require('../middlewares/auth');
+
+//프론트에서 빈문자열('')이 오면 DB에는 NULL로 저장토록 하는 함수
+function toNull(value) { 
+  if (value === undefined || value === '') {
+    return null;
+  }
+
+  return value;
+}
 
 router.get('/hello', (req, res) => {
   res.json({
@@ -16,20 +24,28 @@ router.get('/items', authMiddleware, async (req, res) => { //아이템 목록 �
   try {
     const userId = req.user.id; //검증이 완료되었으면 
 
-    const [rows] = await pool.query( //sql문 실행하여 해당 유저의 아이템만 불러옴
-      `
-      SELECT
-        id,
-        user_id,
-        name,
-        description,
-        created_at
-      FROM items
-      WHERE user_id = ?
-      ORDER BY created_at DESC
-      `,
-      [userId]
-    );
+    const [rows] = await pool.query( //sql문을 실행하여 해당 유저의 아이템정보들을 불러온다
+  `
+  SELECT
+    id,
+    user_id,
+    name,
+    description,
+    category,
+    sub_category,
+    color,
+    material,
+    fit,
+    season,
+    style,
+    image_url,
+    created_at
+  FROM items
+  WHERE user_id = ?
+  ORDER BY created_at DESC
+  `,
+  [userId]
+);
 
     res.json(rows);
   } catch (error) {
@@ -70,11 +86,23 @@ router.post('/users', async (req, res) => {
   }
 });
 
-// 아이템 생성
-router.post('/items', authMiddleware, async (req, res) => { //미들웨어가 검증 & 검증이 성공적이면 해당 유저기준으로 아이템 생성
+// 아이템 생성 
+router.post('/items', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { name, description } = req.body;
+    const userId = req.user.id; //미들웨어가 검증 & 검증이 성공적이면 해당 유저기준으로 아이템 생성
+
+    const {
+      name,
+      description,
+      category,
+      sub_category,
+      color,
+      material,
+      fit,
+      season,
+      style,
+      image_url,
+    } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: '아이템 이름은 필수입니다.' });
@@ -82,17 +110,49 @@ router.post('/items', authMiddleware, async (req, res) => { //미들웨어가 �
 
     const [result] = await pool.query(
       `
-      INSERT INTO items (user_id, name, description)
-      VALUES (?, ?, ?)
+      INSERT INTO items (
+        user_id,
+        name,
+        description,
+        category,
+        sub_category,
+        color,
+        material,
+        fit,
+        season,
+        style,
+        image_url
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
-      [userId, name, description || null]
+      [
+        userId,
+        name,
+        toNull(description),
+        toNull(category),
+        toNull(sub_category),
+        toNull(color),
+        toNull(material),
+        toNull(fit),
+        toNull(season),
+        toNull(style),
+        toNull(image_url),
+      ]
     );
 
     res.status(201).json({
       id: result.insertId,
       user_id: userId,
       name,
-      description: description || null,
+      description: toNull(description),
+      category: toNull(category),
+      sub_category: toNull(sub_category),
+      color: toNull(color),
+      material: toNull(material),
+      fit: toNull(fit),
+      season: toNull(season),
+      style: toNull(style),
+      image_url: toNull(image_url),
     });
   } catch (error) {
     console.error('POST /items error:', error);
@@ -125,12 +185,24 @@ router.delete('/items/:id', authMiddleware, async (req, res) => { //미들웨어
   }
 });
 
-//아이템 수정
-router.put('/items/:id', authMiddleware, async (req, res) => { // 아이템 아이디와 유저 아이디 모두 동일해야만 수정 가능하도록 변경
+//아이템 수정 // 아이템 아이디와 그 아이템아이디의 유저 아이디가 req.user.id와 모두 동일해야만 수정 가능하도록 변경
+router.put('/items/:id', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
-    const { name, description } = req.body;
+
+    const {
+      name,
+      description,
+      category,
+      sub_category,
+      color,
+      material,
+      fit,
+      season,
+      style,
+      image_url,
+    } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: '아이템 이름은 필수입니다.' });
@@ -139,10 +211,33 @@ router.put('/items/:id', authMiddleware, async (req, res) => { // 아이템 아�
     const [result] = await pool.query(
       `
       UPDATE items
-      SET name = ?, description = ?
+      SET
+        name = ?,
+        description = ?,
+        category = ?,
+        sub_category = ?,
+        color = ?,
+        material = ?,
+        fit = ?,
+        season = ?,
+        style = ?,
+        image_url = ?
       WHERE id = ? AND user_id = ?
       `,
-      [name, description || null, itemId, userId]
+      [
+        name,
+        toNull(description),
+        toNull(category),
+        toNull(sub_category),
+        toNull(color),
+        toNull(material),
+        toNull(fit),
+        toNull(season),
+        toNull(style),
+        toNull(image_url),
+        itemId,
+        userId,
+      ]
     );
 
     if (result.affectedRows === 0) {
@@ -153,7 +248,15 @@ router.put('/items/:id', authMiddleware, async (req, res) => { // 아이템 아�
       message: '아이템이 수정되었습니다.',
       id: Number(itemId),
       name,
-      description: description || null,
+      description: toNull(description),
+      category: toNull(category),
+      sub_category: toNull(sub_category),
+      color: toNull(color),
+      material: toNull(material),
+      fit: toNull(fit),
+      season: toNull(season),
+      style: toNull(style),
+      image_url: toNull(image_url),
     });
   } catch (error) {
     console.error('PUT /items/:id error:', error);
