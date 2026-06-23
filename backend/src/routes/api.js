@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../services/db');
 const authMiddleware = require('../middlewares/auth');
+const multer = require('multer');
+const crypto = require('crypto');
+const path = require('path');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 //프론트에서 빈문자열('')이 오면 DB에는 NULL로 저장토록 하는 함수
 function toNull(value) { 
@@ -18,6 +22,28 @@ router.get('/hello', (req, res) => {
     time: new Date().toISOString(),
   });
 });
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'ap-northeast-2',
+});
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB 제한
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('이미지 파일만 업로드할 수 있습니다.'));
+    }
+
+    cb(null, true);
+  },
+});
+
+function getFileExtension(filename) {
+  return path.extname(filename).toLowerCase() || '.jpg';
+}
 
 //아이템 목록 출력
 router.get('/items', authMiddleware, async (req, res) => { //아이템 목록 불러오기전 authmiddleware가 먼저 검증
@@ -261,6 +287,77 @@ router.put('/items/:id', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('PUT /items/:id error:', error);
     res.status(500).json({ message: '아이템 수정 중 서버 오류가 발생했습니다.' });
+  }
+});
+
+// 아이템 이미지 업로드
+router.post('/items/:id/image', authMiddleware, upload.single('image'), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const itemId = req.params.id;
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: '업로드할 이미지 파일이 필요합니다.',
+      });
+    }
+
+    // 1. 이 아이템이 정말 로그인한 사용자의 아이템인지 확인
+    const [items] = await pool.query(
+      `
+      SELECT id
+      FROM items
+      WHERE id = ? AND user_id = ?
+      `,
+      [itemId, userId]
+    );
+
+    if (items.length === 0) {
+      return res.status(403).json({
+        message: '이미지 업로드 권한이 없거나 아이템이 존재하지 않습니다.',
+      });
+    }
+
+    // 2. S3 object key 생성
+    const ext = getFileExtension(req.file.originalname);
+    const randomName = crypto.randomUUID();
+
+    const objectKey = `users/${userId}/items/${itemId}/${randomName}${ext}`;
+
+    // 3. S3 업로드
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: objectKey,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+      })
+    );
+
+    // 4. S3 URL 생성
+    const imageUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'ap-northeast-2'}.amazonaws.com/${objectKey}`;
+
+    // 5. DB image_url 업데이트
+    await pool.query(
+      `
+      UPDATE items
+      SET image_url = ?
+      WHERE id = ? AND user_id = ?
+      `,
+      [imageUrl, itemId, userId]
+    );
+
+    res.status(201).json({
+      message: '이미지 업로드 성공',
+      item_id: Number(itemId),
+      image_url: imageUrl,
+    });
+  } catch (error) {
+    console.error('POST /items/:id/image error:', error);
+
+    res.status(500).json({
+      message: '이미지 업로드 중 서버 오류가 발생했습니다.',
+    });
   }
 });
 
