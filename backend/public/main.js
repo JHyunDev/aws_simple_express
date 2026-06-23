@@ -213,8 +213,7 @@ async function loadItems() {
       소재: ${item.material || ''}
       핏: ${item.fit || ''}
       계절: ${item.season || ''}
-      스타일: ${item.style || ''}
-      이미지: ${item.image_url || ''}`;
+      스타일: ${item.style || ''}`;
 
       let imagePreview = null; // 처음에는 이미지 미리보기가 없다고 가정
 
