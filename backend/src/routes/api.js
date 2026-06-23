@@ -5,7 +5,8 @@ const authMiddleware = require('../middlewares/auth');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 //프론트에서 빈문자열('')이 오면 DB에는 NULL로 저장토록 하는 함수
 function toNull(value) { 
@@ -14,6 +15,22 @@ function toNull(value) {
   }
 
   return value;
+}
+
+//presigned url 생성 함수
+async function createPresignedImageUrl(imageKey) { //DB의 imagekey받아서 
+  if (!imageKey) {
+    return null;
+  }
+
+  const command = new GetObjectCommand({ //S3 GetObjectCommand 생성
+    Bucket: process.env.S3_BUCKET_NAME,
+    Key: imageKey,
+  });
+
+  return getSignedUrl(s3Client, command, { //10분짜리 임시 접근 url생성
+    expiresIn: 60 * 10, // 10분
+  });
 }
 
 router.get('/hello', (req, res) => {
@@ -65,6 +82,7 @@ router.get('/items', authMiddleware, async (req, res) => { //아이템 목록 �
     season,
     style,
     image_url,
+    image_key,
     created_at
   FROM items
   WHERE user_id = ?
@@ -73,7 +91,18 @@ router.get('/items', authMiddleware, async (req, res) => { //아이템 목록 �
   [userId]
 );
 
-    res.json(rows);
+  const itemsWithImageUrls = await Promise.all(
+      rows.map(async (item) => {
+        const presignedUrl = await createPresignedImageUrl(item.image_key);
+
+        return {
+          ...item,
+          image_url: presignedUrl || item.image_url,
+        };
+      })
+    );
+
+    res.json(itemsWithImageUrls);
   } catch (error) {
     console.error('GET /items error:', error);
     res.status(500).json({ message: '아이템 목록 조회 중 서버 오류가 발생했습니다.' });
@@ -334,23 +363,24 @@ router.post('/items/:id/image', authMiddleware, upload.single('image'), async (r
       })
     );
 
-    // 4. S3 URL 생성
-    const imageUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'ap-northeast-2'}.amazonaws.com/${objectKey}`;
-
-    // 5. DB image_url 업데이트
+    // 4. S3 key를 DB에 저장
     await pool.query(
       `
       UPDATE items
-      SET image_url = ?
+      SET image_key = ?
       WHERE id = ? AND user_id = ?
       `,
-      [imageUrl, itemId, userId]
+      [objectKey, itemId, userId]
     );
+
+    // 5. 방금 업로드한 이미지에 접근할 수 있는 Presigned URL 생성
+    const presignedUrl = await createPresignedImageUrl(objectKey);
 
     res.status(201).json({
       message: '이미지 업로드 성공',
       item_id: Number(itemId),
-      image_url: imageUrl,
+      image_key: objectKey,
+      image_url: presignedUrl,
     });
   } catch (error) {
     console.error('POST /items/:id/image error:', error);
