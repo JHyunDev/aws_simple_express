@@ -168,15 +168,15 @@ document.getElementById('btn').addEventListener('click', async () => {
 //   ↓
 // 브라우저가 li/button DOM을 동적으로 생성
 // -----------------------------------------------------
-async function loadItems() {
+async function loadItems() { //아이템 조회 버튼 클릭
   try {
-    const res = await fetch(`${API_BASE_URL}/api/items`, {
+    const res = await fetch(`${API_BASE_URL}/api/items`, { //fetch를 통해 요청 전송후 응답을 받아서 HTTP response객체를 res에 저장
       headers: {
-        ...getAuthHeaders(),// -> 함수가 반환한 객체를 headers 안에 펼쳐 넣는다
+        ...getAuthHeaders(),// -> getAuthHeaders()가 localStorage에 저장돼 있던 JWT를 꺼내서 Authorization: Bearer eyJhbGciOi...형태로 붙여준다
       },
     });
 
-    const data = await res.json();
+    const data = await res.json(); // 위에서 받은 HTTP response 의 JSON body를 파싱하여 Javascript객체로 변환한다음 data 객체에 저장
 
     // 인증 실패, 권한 없음, 서버 에러 등을 브라우저에서 확인하기 위한 처리
     if (!res.ok) {
@@ -196,7 +196,7 @@ async function loadItems() {
     // 안 비우면 loadItems()를 호출할 때마다 같은 데이터가 계속 누적된다.
     itemList.innerHTML = '';
 
-    // 서버에서 받은 아이템 배열을 하나씩 li로 만든다.
+    // 서버에서 받은 아이템 배열을 하나씩 li로 만든후 화면에 그린다.
     data.forEach((item) => {
       const li = document.createElement('li');
 
@@ -219,7 +219,7 @@ async function loadItems() {
 
       if (item.image_url) { // DB에서 가져온 아이템에 image_url이 있을 때만 이미지를 만들겠다
         imagePreview = document.createElement('img'); // 브라우저 화면에 넣을 <img> 태그를 JavaScript로 만듦
-        imagePreview.src = item.image_url; //<img src="...">의 src에 S3 이미지 URL을 넣는다. 브라우저는 이 URL을 보고 S3로 이미지 요청을 보낸다.
+        imagePreview.src = item.image_url; //<img src="...">의 src에 S3 이미지 URL을 넣는다. 브라우저는 이 URL을 보고 S3로 이미지 요청을 보낸다. 따라서 사진은 Express를 통하지 않고 브라우저가 S3에서 직접 요청해서 받는다!
         imagePreview.alt = item.name; // 이미지가 안 뜰 때 대신 보여줄 설명.
         imagePreview.className = 'item-image-preview'; //CSS에서 이미지 크기, 테두리, 둥근 모서리 같은 스타일을 주기 위한 클래스 이름
       }

@@ -1,7 +1,7 @@
-const express = require('express');
-const router = express.Router();
-const pool = require('../services/db');
-const authMiddleware = require('../middlewares/auth');
+const express = require('express'); //가장 먼저, Express 모듈을 가져온다.
+const router = express.Router(); //그 후 Express가 제공하는 Router() 함수를 호출해서 router객체를 생성
+const pool = require('../services/db'); //db와 연결을 제공하는 db.js의 객체 생성
+const authMiddleware = require('../middlewares/auth'); //auth,js에서 검증 후 반환한 함수 객체를 받아 authMiddleware에 저장
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
@@ -33,7 +33,7 @@ async function createPresignedImageUrl(imageKey) { //DB의 imagekey받아서
   });
 }
 
-router.get('/hello', (req, res) => {
+router.get('/hello', (req, res) => { //위에서 만든 router객체에 경로 등록, GET /hello 요청이 들어오면? -> 아래의 함수 실행
   res.json({
     message: 'Hello from API',
     time: new Date().toISOString(),
@@ -63,11 +63,11 @@ function getFileExtension(filename) {
 }
 
 //아이템 목록 출력
-router.get('/items', authMiddleware, async (req, res) => { //아이템 목록 불러오기전 authmiddleware가 먼저 검증
+router.get('/items', authMiddleware, async (req, res) => { //위에서 만든 router객체에 경로 등록, GET /items 요청이 들어오면? -> 아래의 함수 실행
   try {
-    const userId = req.user.id; //검증이 완료되었으면 
+    const userId = req.user.id; //auth.js(middleware)에서 req객체에 사용자 정보를 추가해주었으므로 userId 변수에 검증된 유저 아이디 저장. 만약 검증이 완료되었으면 
 
-    const [rows] = await pool.query( //sql문을 실행하여 해당 유저의 아이템정보들을 불러온다
+    const [rows] = await pool.query( //db연결객체(pool)에게 SQL쿼리를 실행하라고 요청한다. 밑에는 실제 SQL 쿼리문
   `
   SELECT
     id,
@@ -86,14 +86,14 @@ router.get('/items', authMiddleware, async (req, res) => { //아이템 목록 �
     created_at
   FROM items
   WHERE user_id = ?
-  ORDER BY created_at DESC
+  ORDER BY created_at DESC   
   `,
-  [userId]
+  [userId] // ? 부분에 넣을 값, req를 authmiddleware 객체에 넘겼을때 인증이 완료되면 authmiddleware객체에서 user.id를 생성해 req에 붙여주기 떄문에 해당 정보를 SQL문에 붙여서 요청한 해당 유저의 정보만을 데이터베이스에서 불러온다.
 );
 
   const itemsWithImageUrls = await Promise.all(
       rows.map(async (item) => {
-        const presignedUrl = await createPresignedImageUrl(item.image_key);
+        const presignedUrl = await createPresignedImageUrl(item.image_key); //SQL을 통해 DB에서 불러온 아이템중에 이미지 키를 가지고 있다면 presignedurl생성 함수를 호출하여 S3에 해당 이미지 키를 보내서 10분 한도의 이미지 임시접근 url을 받아온다.
 
         return {
           ...item,
@@ -102,7 +102,7 @@ router.get('/items', authMiddleware, async (req, res) => { //아이템 목록 �
       })
     );
 
-    res.json(itemsWithImageUrls);
+    res.json(itemsWithImageUrls); //모든 아이템의 preSignedurl생성이 끝나면, Express가 JavaScript객체를 JSON식으로 바꿔서 HTTP response를 만든다.
   } catch (error) {
     console.error('GET /items error:', error);
     res.status(500).json({ message: '아이템 목록 조회 중 서버 오류가 발생했습니다.' });
@@ -142,7 +142,7 @@ router.post('/users', async (req, res) => {
 });
 
 // 아이템 생성 
-router.post('/items', authMiddleware, async (req, res) => {
+router.post('/items', authMiddleware, async (req, res) => { // GET /items 요청이 들어오면 auth미들웨어 실행 -> 성공하면 async (req, res) => {...} 실행
   try {
     const userId = req.user.id; //미들웨어가 검증 & 검증이 성공적이면 해당 유저기준으로 아이템 생성
 
@@ -398,4 +398,4 @@ router.get('/me', authMiddleware, (req, res) => {
   });
 });
 
-module.exports = router;
+module.exports = router; //위에서 경로등록해서 만든 router객체를 다른 파일에서도 사용할 수 있도록 보낸다
