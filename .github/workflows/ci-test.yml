@@ -14,18 +14,19 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
 
       - name: Install dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Show environment
+      - name: Start application
         working-directory: backend
         run: |
-          echo "GitHub Actions is running"
-          pwd
-          node -v
-          npm -v
+          node server.js &
+          sleep 3
+
+      - name: Health check
+        run: curl --fail http://localhost:3000/health
