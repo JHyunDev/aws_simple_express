@@ -1,6 +1,6 @@
 name: CI Test
 
-on: 
+on:
   push:
     branches:
       - main
@@ -13,10 +13,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
       - name: Show environment
+        working-directory: backend
         run: |
           echo "GitHub Actions is running"
           pwd
-          ls -la
           node -v
           npm -v
