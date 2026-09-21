@@ -66,3 +66,13 @@ jobs:
             -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id i-09f328a19c5fdbfac --instance-connect-endpoint-id eice-0552b70076fcf78b9" \
             ubuntu@i-09f328a19c5fdbfac \
             "hostname && whoami"
+
+      - name: Create deployment artifact
+        working-directory: backend
+        run: |
+          tar \
+            --exclude='.env' \
+            --exclude='*.log' \
+            -czf /tmp/wardrobe-backend.tar.gz .
+          
+          ls -lh /tmp/wardrobe-backend.tar.gz
