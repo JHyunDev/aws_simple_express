@@ -103,6 +103,59 @@ jobs:
             /tmp/wardrobe-backend.tar.gz \
             ubuntu@i-09f328a19c5fdbfac:/home/ubuntu/wardrobe-backend.tar.gz
 
+      - name: Verify release on EC2-A
+        run: |
+          ssh \
+            -i /tmp/wardrobe_key \
+            -o StrictHostKeyChecking=no \
+            -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id i-09f328a19c5fdbfac --instance-connect-endpoint-id eice-0552b70076fcf78b9" \
+            ubuntu@i-09f328a19c5fdbfac \
+            'bash -s' <<'EOF'
+              set -e
+
+              RELEASE_DIR=/home/ubuntu/wardrobe-releases/github-test
+
+              echo "=== 1. Prepare release directory ==="
+              rm -rf "$RELEASE_DIR"
+              mkdir -p "$RELEASE_DIR"
+
+              echo "=== 2. Extract artifact ==="
+              tar -xzf /home/ubuntu/wardrobe-backend.tar.gz \
+                -C "$RELEASE_DIR"
+
+              echo "=== 3. Link environment file ==="
+              ln -s \
+                /home/ubuntu/aws_simple_express/backend/.env \
+                "$RELEASE_DIR/.env"
+
+              echo "=== 4. Start candidate on port 3001 ==="
+              cd "$RELEASE_DIR"
+
+              PORT=3001 node server.js \
+                > /tmp/wardrobe-precheck.log 2>&1 &
+
+              TEST_PID=$!
+
+              trap 'kill $TEST_PID 2>/dev/null || true' EXIT
+
+              sleep 3
+
+              echo "=== 5. Check listening socket ==="
+              ss -lntp | grep ':3001'
+
+              echo "=== 6. Check Express health ==="
+              curl --fail http://localhost:3001/health
+
+              echo ""
+
+              echo "=== 7. Check DB health ==="
+              curl --fail http://localhost:3001/health/db
+
+              echo ""
+
+              echo "=== PRE-DEPLOY CHECK PASSED ==="
+          EOF
+
       - name: Copy artifact to EC2-B
         run: |
           scp \
