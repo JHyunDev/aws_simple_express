@@ -155,7 +155,15 @@ jobs:
 
               echo "=== PRE-DEPLOY CHECK PASSED ==="
           EOF
-
+     
+      - name: Refresh SSH public key for EC2-A
+        run: |
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id i-09f328a19c5fdbfac \
+            --instance-os-user ubuntu \
+            --ssh-public-key file:///tmp/wardrobe_key.pub \
+            --region ap-northeast-2
+      
       - name: Promote release on EC2-A
         run: |
           ssh \
