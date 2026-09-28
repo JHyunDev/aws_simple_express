@@ -204,6 +204,14 @@ jobs:
               echo "=== EC2-A DEPLOYMENT SUCCESS ==="
           EOF
 
+      - name: Refresh SSH public key for EC2-B
+        run: |
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id i-097a57ea84e806ee5 \
+            --instance-os-user ubuntu \
+            --ssh-public-key file:///tmp/wardrobe_key.pub \
+            --region ap-northeast-2
+
       - name: Copy artifact to EC2-B
         run: |
           scp \
