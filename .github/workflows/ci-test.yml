@@ -164,44 +164,64 @@ jobs:
             --ssh-public-key file:///tmp/wardrobe_key.pub \
             --region ap-northeast-2
       
-      - name: Promote release on EC2-A
+      - name: Promote release on EC2-A with rollback
         run: |
           ssh \
             -i /tmp/wardrobe_key \
             -o StrictHostKeyChecking=no \
-            -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id i-09f328a19c5fdbfac --instance-connect-endpoint-id eice-0552b70076fcf78b9" \
-            ubuntu@i-09f328a19c5fdbfac \
+            -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id <EC2_A_ID> --instance-connect-endpoint-id <EICE_ID>" \
+            ubuntu@<EC2_A_ID> \
             'bash -s' <<'EOF'
               set -e
 
-              RELEASE_DIR=/home/ubuntu/wardrobe-releases/github-test
+              NEW_RELEASE=/home/ubuntu/wardrobe-releases/github-test
+              CURRENT_LINK=/home/ubuntu/wardrobe-current
 
-              echo "=== 1. Stop old PM2 process ==="
-              pm2 delete wardrobe
+              echo "=== 1. Save previous release ==="
+              PREVIOUS_RELEASE=$(readlink -f "$CURRENT_LINK")
 
-              echo "=== 2. Start new release on production port ==="
-              cd "$RELEASE_DIR"
-              pm2 start server.js --name wardrobe
+              echo "Previous release: $PREVIOUS_RELEASE"
+              echo "New release:      $NEW_RELEASE"
+
+              echo "=== 2. Switch current symlink ==="
+              ln -sfn "$NEW_RELEASE" "$CURRENT_LINK"
+
+              echo "=== 3. Restart PM2 ==="
+              pm2 restart wardrobe
 
               sleep 3
 
-              echo "=== 3. Check production listening socket ==="
-              ss -lntp | grep ':3000'
+              echo "=== 4. Post-deploy health check ==="
 
-              echo "=== 4. Check production health ==="
-              curl --fail http://localhost:3000/health
+              if curl --fail http://localhost:3000/health \
+                && curl --fail http://localhost:3000/health/db
+              then
+                echo ""
+                echo "=== DEPLOYMENT SUCCESS ==="
 
-              echo ""
+                pm2 save
 
-              echo "=== 5. Check production DB health ==="
-              curl --fail http://localhost:3000/health/db
+              else
+                echo ""
+                echo "=== DEPLOYMENT FAILED ==="
+                echo "Rolling back to: $PREVIOUS_RELEASE"
 
-              echo ""
+                ln -sfn "$PREVIOUS_RELEASE" "$CURRENT_LINK"
 
-              echo "=== 6. Save PM2 process list ==="
-              pm2 save
+                pm2 restart wardrobe
 
-              echo "=== EC2-A DEPLOYMENT SUCCESS ==="
+                sleep 3
+
+                echo "=== Rollback health check ==="
+
+                curl --fail http://localhost:3000/health
+                curl --fail http://localhost:3000/health/db
+
+                echo ""
+                echo "=== ROLLBACK SUCCESS ==="
+
+                exit 1
+              fi
           EOF
 
       - name: Refresh SSH public key for EC2-B
