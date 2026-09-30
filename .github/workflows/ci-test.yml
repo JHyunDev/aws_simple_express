@@ -240,5 +240,5 @@ jobs:
             -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id i-097a57ea84e806ee5 --instance-connect-endpoint-id eice-0552b70076fcf78b9" \
             /tmp/wardrobe-backend.tar.gz \
             ubuntu@i-097a57ea84e806ee5:/home/ubuntu/wardrobe-backend.tar.gz
-            d
+            
             
