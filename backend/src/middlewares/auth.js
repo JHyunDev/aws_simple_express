@@ -21,7 +21,7 @@ function authMiddleware(req, res, next) { //Express는 HTTP요청을 받으면 �
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET); //-> 이 JWT가 우리 서버의 JWT_SECRET으로 서명된 진짜 토큰인가? 서버가 확인, 로그인할 때 서버가 JWT를 만들면서, 사용자 정보와 jwt_secret을 사용하여 서명을 만들어 놓았다. 이를 통해 서버가 자신이 발급한 토큰이 맞는지 확인
 
-    req.user = { //-> 검문 통과시 아래와 같이 요청 객체에 사용자 정보를 붙임, 이제부터 API는 유저가 보낸 user_id를 믿지 않고 서버가 검증한 req.user.id를 믿게 된다.
+    req.user = { //-> 원래 req에는 HTTP 요청 정보들이 있다, 여기에 우리가 직접 req.user를 추가해 준다. 검문 통과시 아래와 같이 요청 객체에 사용자 정보를 붙임, 이제부터 API는 유저가 보낸 user_id를 믿지 않고 서버가 검증한 req.user.id를 믿게 된다.
       id: decoded.id,
       email: decoded.email,
     };

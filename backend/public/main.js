@@ -403,7 +403,7 @@ async function updateItem(item) {
       return;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/items/${item.id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/items/${item.id}`, { 
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
