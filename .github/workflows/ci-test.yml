@@ -1,23 +1,23 @@
 name: CI Test
 
 
-on:
+on: #언제 실행할것인가?
   push:
     branches:
-      - main
+      - main #main branch에 push했을때 이 yaml파일(런처 스크립트)을 실행
 
 permissions:
   id-token: write
   contents: read
   
 
-jobs:
+jobs: #어떤 작업 묶음을 돌릴것인가?
   test:
     runs-on: ubuntu-latest
 
-    steps:
+    steps: # 순서대로 어떤 작업을 돌릴것인가?
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v5 #다른사람들이 만들어둔 action사용
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -26,10 +26,10 @@ jobs:
 
       - name: Install dependencies
         working-directory: backend
-        run: npm ci
+        run: npm ci #직접 shell 명령 실행
 
       - name: Start application
-        working-directory: backend
+        working-directory: backend #어느 폴더에서 실행할 것인가?
         run: |
           node server.js &
           sleep 3
@@ -200,7 +200,7 @@ jobs:
 
               echo "=== 4. Post-deploy health check ==="
 
-              if curl --fail http://localhost:3000/health \
+              if curl --fail http://localhost:3000/health12 \
                 && curl --fail http://localhost:3000/health/db
               then
                 echo ""
@@ -247,5 +247,132 @@ jobs:
             -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id i-097a57ea84e806ee5 --instance-connect-endpoint-id eice-0552b70076fcf78b9" \
             /tmp/wardrobe-backend.tar.gz \
             ubuntu@i-097a57ea84e806ee5:/home/ubuntu/wardrobe-backend.tar.gz
-            
+
+      - name: Verify release on EC2-B
+        run: |
+          ssh \
+            -i /tmp/wardrobe_key \
+            -o StrictHostKeyChecking=no \
+            -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id i-097a57ea84e806ee5 --instance-connect-endpoint-id eice-0552b70076fcf78b9" \
+            ubuntu@i-097a57ea84e806ee5 \
+            "bash -s -- $GITHUB_SHA" <<'EOF'
+              set -e
+
+              RELEASE_ID="$1"
+              RELEASE_DIR="/home/ubuntu/wardrobe-releases/$RELEASE_ID"
+
+              echo "=== Release ID ==="
+              echo "$RELEASE_ID"
+
+              echo "=== 1. Prepare release directory ==="
+
+              if [ ! -d "$RELEASE_DIR" ]; then
+                mkdir -p "$RELEASE_DIR"
+
+                tar -xzf /home/ubuntu/wardrobe-backend.tar.gz \
+                  -C "$RELEASE_DIR"
+
+                ln -s \
+                  /home/ubuntu/aws_simple_express/backend/.env \
+                  "$RELEASE_DIR/.env"
+              else
+                echo "Release already exists: $RELEASE_DIR"
+              fi
+
+              echo "=== 2. Start candidate on port 3001 ==="
+              cd "$RELEASE_DIR"
+
+              PORT=3001 node server.js \
+                > /tmp/wardrobe-precheck.log 2>&1 &
+
+              TEST_PID=$!
+
+              trap 'kill $TEST_PID 2>/dev/null || true' EXIT
+
+              sleep 3
+
+              echo "=== 3. Check listening socket ==="
+              ss -lntp | grep ':3001'
+
+              echo "=== 4. Check Express health ==="
+              curl --fail http://localhost:3001/health
+
+              echo ""
+
+              echo "=== 5. Check DB health ==="
+              curl --fail http://localhost:3001/health/db
+
+              echo ""
+
+              echo "=== EC2-B PRE-DEPLOY CHECK PASSED ==="
+          EOF
+        
+      - name: Refresh SSH public key for EC2-B before promote
+        run: |
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id i-097a57ea84e806ee5 \
+            --instance-os-user ubuntu \
+            --ssh-public-key file:///tmp/wardrobe_key.pub \
+            --region ap-northeast-2
+
+      - name: Promote release on EC2-B with rollback
+        run: |
+          ssh \
+            -i /tmp/wardrobe_key \
+            -o StrictHostKeyChecking=no \
+            -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id i-097a57ea84e806ee5 --instance-connect-endpoint-id eice-0552b70076fcf78b9" \
+            ubuntu@i-097a57ea84e806ee5 \
+            "bash -s -- $GITHUB_SHA" <<'EOF'
+              set -e
+
+              RELEASE_ID="$1"
+              NEW_RELEASE="/home/ubuntu/wardrobe-releases/$RELEASE_ID"
+              CURRENT_LINK=/home/ubuntu/wardrobe-current
+
+              echo "=== 1. Save previous release ==="
+              PREVIOUS_RELEASE=$(readlink -f "$CURRENT_LINK")
+
+              echo "Previous release: $PREVIOUS_RELEASE"
+              echo "New release:      $NEW_RELEASE"
+
+              echo "=== 2. Switch current symlink ==="
+              ln -sfn "$NEW_RELEASE" "$CURRENT_LINK"
+
+              echo "=== 3. Restart PM2 ==="
+              pm2 restart wardrobe
+
+              sleep 3
+
+              echo "=== 4. Post-deploy health check ==="
+
+              if curl --fail http://localhost:3000/health \
+                && curl --fail http://localhost:3000/health/db
+              then
+                echo ""
+                echo "=== EC2-B DEPLOYMENT SUCCESS ==="
+
+                pm2 save
+
+              else
+                echo ""
+                echo "=== EC2-B DEPLOYMENT FAILED ==="
+                echo "Rolling back to: $PREVIOUS_RELEASE"
+
+                ln -sfn "$PREVIOUS_RELEASE" "$CURRENT_LINK"
+
+                pm2 restart wardrobe
+
+                sleep 3
+
+                echo "=== Rollback health check ==="
+
+                curl --fail http://localhost:3000/health
+                curl --fail http://localhost:3000/health/db
+
+                echo ""
+                echo "=== EC2-B ROLLBACK SUCCESS ==="
+
+                exit 1
+              fi
+          EOF
             
