@@ -261,11 +261,6 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
               RELEASE_ID="$1"
               RELEASE_DIR="/home/ubuntu/wardrobe-releases/$RELEASE_ID"
 
-              echo "=== Release ID ==="
-              echo "$RELEASE_ID"
-
-              echo "=== 1. Prepare release directory ==="
-
               if [ ! -d "$RELEASE_DIR" ]; then
                 mkdir -p "$RELEASE_DIR"
 
@@ -275,38 +270,25 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
                 ln -s \
                   /home/ubuntu/aws_simple_express/backend/.env \
                   "$RELEASE_DIR/.env"
-              else
-                echo "Release already exists: $RELEASE_DIR"
               fi
 
-              echo "=== 2. Start candidate on port 3001 ==="
               cd "$RELEASE_DIR"
 
               PORT=3001 node server.js \
                 > /tmp/wardrobe-precheck.log 2>&1 &
 
               TEST_PID=$!
-
               trap 'kill $TEST_PID 2>/dev/null || true' EXIT
 
               sleep 3
 
-              echo "=== 3. Check listening socket ==="
               ss -lntp | grep ':3001'
-
-              echo "=== 4. Check Express health ==="
               curl --fail http://localhost:3001/health
-
-              echo ""
-
-              echo "=== 5. Check DB health ==="
               curl --fail http://localhost:3001/health/db
-
-              echo ""
 
               echo "=== EC2-B PRE-DEPLOY CHECK PASSED ==="
           EOF
-        
+
       - name: Refresh SSH public key for EC2-B before promote
         run: |
           aws ec2-instance-connect send-ssh-public-key \
@@ -329,32 +311,23 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
               NEW_RELEASE="/home/ubuntu/wardrobe-releases/$RELEASE_ID"
               CURRENT_LINK=/home/ubuntu/wardrobe-current
 
-              echo "=== 1. Save previous release ==="
               PREVIOUS_RELEASE=$(readlink -f "$CURRENT_LINK")
 
               echo "Previous release: $PREVIOUS_RELEASE"
               echo "New release:      $NEW_RELEASE"
 
-              echo "=== 2. Switch current symlink ==="
               ln -sfn "$NEW_RELEASE" "$CURRENT_LINK"
 
-              echo "=== 3. Restart PM2 ==="
               pm2 restart wardrobe
 
               sleep 3
 
-              echo "=== 4. Post-deploy health check ==="
-
               if curl --fail http://localhost:3000/health \
                 && curl --fail http://localhost:3000/health/db
               then
-                echo ""
                 echo "=== EC2-B DEPLOYMENT SUCCESS ==="
-
                 pm2 save
-
               else
-                echo ""
                 echo "=== EC2-B DEPLOYMENT FAILED ==="
                 echo "Rolling back to: $PREVIOUS_RELEASE"
 
@@ -364,12 +337,9 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
 
                 sleep 3
 
-                echo "=== Rollback health check ==="
-
                 curl --fail http://localhost:3000/health
                 curl --fail http://localhost:3000/health/db
 
-                echo ""
                 echo "=== EC2-B ROLLBACK SUCCESS ==="
 
                 exit 1
