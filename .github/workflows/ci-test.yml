@@ -48,13 +48,50 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
           ls -lh /tmp/wardrobe-backend.tar.gz
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v5 #
         with:
           role-to-assume: arn:aws:iam::066036524900:role/WardrobeGitHubActionsRole
           aws-region: ap-northeast-2
 
       - name: Verify AWS identity
         run: aws sts get-caller-identity
+
+      - name: Verify ALB target group access
+        env:
+          TG_ARN: ${{ vars.WARDROBE_TG_ARN }}
+        run: |
+          set -euo pipefail
+
+          echo "=== Verify Target Group ARN ==="
+          test -n "$TG_ARN"
+
+          echo "=== Describe Target Health ==="
+          aws elbv2 describe-target-health \
+            --target-group-arn "$TG_ARN" \
+            --region ap-northeast-2 \
+            --query 'TargetHealthDescriptions[*].[Target.Id,Target.Port,TargetHealth.State]' \
+            --output table
+
+          echo "=== Verify both targets are Healthy ==="
+          for INSTANCE_ID in \
+            i-09f328a19c5fdbfac \
+            i-097a57ea84e806ee5
+          do
+            STATE=$(aws elbv2 describe-target-health \
+              --target-group-arn "$TG_ARN" \
+              --targets Id="$INSTANCE_ID",Port=3000 \
+              --region ap-northeast-2 \
+              --query 'TargetHealthDescriptions[0].TargetHealth.State' \
+              --output text)
+
+            echo "$INSTANCE_ID: $STATE"
+
+            if [ "$STATE" != "healthy" ]; then 
+              echo "ERROR: $INSTANCE_ID is not Healthy"
+              exit 1 
+          done
+
+          echo "=== ALB PREFLIGHT CHECK PASSED ==="
 
       - name: Generate temporary SSH key
         run: |
