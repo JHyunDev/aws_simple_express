@@ -21,6 +21,6 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api', apiRouter); // Express야, 앞으로 URL이 /api로 시작하는 요청이 들어오면 이 apiRouter 객체를 검사해라 -> apirouter객체내에서 맞는 경로를 또 찾아감
 app.use('/health', healthRouter);// /health요청을 health.js로 넘김
 app.use('/api/auth', authRouter);// /api/auth요청을 auth.js로 넘김
-
+app.disable('x-powered-by');
 module.exports = app; //위에서 만든 app객체를 다른 모듈도 사용가능하게 export
 

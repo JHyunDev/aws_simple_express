@@ -34,10 +34,10 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
           node server.js &
           sleep 3
 
-      - name: Health check
+      - name: Health check #여기까지 github Actions 자체 서버에서 자체적으로 서버가 동작하는지 테스트
         run: curl --fail http://localhost:3000/health
 
-      - name: Create deployment artifact
+      - name: Create deployment artifact #위의 결과물 (의존성(node_modules) + 프로그램 소스 한데 묶어놓음)
         working-directory: backend
         run: |
           tar \
