@@ -391,6 +391,44 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
               echo "=== EC2-B PRE-DEPLOY CHECK PASSED ==="
           EOF
 
+      - name: Drain EC2-B before deployment #EC2-b가 받은 남은 요청이 처리될때까지 대기한 후 EC2-B를 ALB에서 제거
+        id: drain_b
+        env:
+          TG_ARN: ${{ vars.WARDROBE_TG_ARN }}
+          EC2_A: i-09f328a19c5fdbfac
+          EC2_B: i-097a57ea84e806ee5
+        run: |
+          set -euo pipefail
+
+          echo "=== Check EC2-A is Healthy ==="
+
+          A_STATE=$(aws elbv2 describe-target-health \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_A",Port=3000 \
+            --query 'TargetHealthDescriptions[0].TargetHealth.State' \
+            --output text)
+
+          if [ "$A_STATE" != "healthy" ]; then
+            echo "ERROR: EC2-A is not Healthy"
+            exit 1
+          fi
+
+          echo "=== Deregister EC2-B ==="
+
+          echo "attempted=true" >> "$GITHUB_OUTPUT"
+
+          aws elbv2 deregister-targets \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_B",Port=3000
+
+          echo "=== Wait for EC2-B Draining ==="
+
+          aws elbv2 wait target-deregistered \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_B",Port=3000
+
+          echo "=== EC2-B DRAIN COMPLETE ==="
+
       - name: Refresh SSH public key for EC2-B before promote
         run: |
           aws ec2-instance-connect send-ssh-public-key \
@@ -447,4 +485,51 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
                 exit 1
               fi
           EOF
-            
+
+      - name: Restore EC2-B to ALB #EC2B를 다시 ALB에 등록
+        if: ${{ always() && steps.drain_b.outputs.attempted == 'true' }}
+        env:
+          TG_ARN: ${{ vars.WARDROBE_TG_ARN }}
+          EC2_B: i-097a57ea84e806ee5
+        run: |
+          set -euo pipefail
+
+          echo "=== Register EC2-B ==="
+
+          aws elbv2 register-targets \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_B",Port=3000
+
+          echo "=== Wait for EC2-B Healthy ==="
+
+          aws elbv2 wait target-in-service \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_B",Port=3000
+
+          echo "=== EC2-B RESTORED AND HEALTHY ==="
+
+      - name: Verify final target health #모든 타겟 그룹대상이 healthy인지 확인
+        env:
+          TG_ARN: ${{ vars.WARDROBE_TG_ARN }}
+        run: |
+          set -euo pipefail
+
+          for INSTANCE_ID in \
+            i-09f328a19c5fdbfac \
+            i-097a57ea84e806ee5
+          do
+            STATE=$(aws elbv2 describe-target-health \
+              --target-group-arn "$TG_ARN" \
+              --targets Id="$INSTANCE_ID",Port=3000 \
+              --query 'TargetHealthDescriptions[0].TargetHealth.State' \
+              --output text)
+
+            echo "$INSTANCE_ID: $STATE"
+
+            if [ "$STATE" != "healthy" ]; then
+              exit 1
+            fi
+          done
+
+          echo "=== BOTH TARGETS HEALTHY ==="
+          
