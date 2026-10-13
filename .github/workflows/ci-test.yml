@@ -73,6 +73,7 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
             --output table
 
           echo "=== Verify both targets are Healthy ==="
+
           for INSTANCE_ID in \
             i-09f328a19c5fdbfac \
             i-097a57ea84e806ee5
@@ -86,13 +87,13 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
 
             echo "$INSTANCE_ID: $STATE"
 
-            if [ "$STATE" != "healthy" ]; then 
+            if [ "$STATE" != "healthy" ]; then
               echo "ERROR: $INSTANCE_ID is not Healthy"
-              exit 1 
+              exit 1
+            fi
           done
 
           echo "=== ALB PREFLIGHT CHECK PASSED ==="
-
       - name: Generate temporary SSH key
         run: |
           ssh-keygen -t ed25519 -f /tmp/wardrobe_key -N ""
