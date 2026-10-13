@@ -6,6 +6,10 @@ on: #언제 실행할것인가?
     branches:
       - main #main branch에 push했을때 이 yaml파일(런처 스크립트)을 실행
 
+concurrency:
+  group: wardrobe-production-deploy #운영배포의 동시 실행 방지
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
@@ -199,7 +203,45 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
 
               echo "=== PRE-DEPLOY CHECK PASSED ==="
           EOF
-     
+          
+      - name: Drain EC2-A before deployment #EC2 B가 Healthy인지 확인-> healthy이면 EC2 A 제외, 아니면 제외 X
+        id: drain_a
+        env:
+          TG_ARN: ${{ vars.WARDROBE_TG_ARN }}
+          EC2_A: i-09f328a19c5fdbfac
+          EC2_B: i-097a57ea84e806ee5
+        run: |
+          set -euo pipefail
+
+          echo "=== Check EC2-B is Healthy ==="                            
+
+          B_STATE=$(aws elbv2 describe-target-health \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_B",Port=3000 \
+            --query 'TargetHealthDescriptions[0].TargetHealth.State' \
+            --output text)
+
+          if [ "$B_STATE" != "healthy" ]; then
+            echo "EC2-B is not healthy. Abort."
+            exit 1
+          fi
+
+          echo "=== Deregister EC2-A ==="
+
+          echo "attempted=true" >> "$GITHUB_OUTPUT"
+
+          aws elbv2 deregister-targets \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_A",Port=3000
+
+          echo "=== Wait for Draining ==="
+
+          aws elbv2 wait target-deregistered \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_A",Port=3000
+
+          echo "=== EC2-A DRAIN COMPLETE ==="
+          
       - name: Refresh SSH public key for EC2-A
         run: |
           aws ec2-instance-connect send-ssh-public-key \
@@ -268,6 +310,28 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
                 exit 1
               fi
           EOF
+
+      - name: Restore EC2-A to ALB
+        if: ${{ always() && steps.drain_a.outputs.attempted == 'true' }}
+        env:
+          TG_ARN: ${{ vars.WARDROBE_TG_ARN }}
+          EC2_A: i-09f328a19c5fdbfac
+        run: |
+          set -euo pipefail
+
+          echo "=== Register EC2-A ==="
+
+          aws elbv2 register-targets \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_A",Port=3000
+
+          echo "=== Wait for EC2-A Healthy ==="
+
+          aws elbv2 wait target-in-service \
+            --target-group-arn "$TG_ARN" \
+            --targets Id="$EC2_A",Port=3000
+
+          echo "=== EC2-A RESTORED AND HEALTHY ==="
 
       - name: Refresh SSH public key for EC2-B
         run: |
