@@ -311,8 +311,28 @@ jobs: #어떤 작업 묶음을 돌릴것인가?
               fi
           EOF
 
-      - name: Restore EC2-A to ALB
+      - name: Verify EC2-A rollback health before registration
+        id: verify_a_outcome
         if: ${{ always() && steps.drain_a.outputs.attempted == 'true' }}
+        run: |
+          set -euo pipefail
+
+          aws ec2-instance-connect send-ssh-public-key \
+            --instance-id i-09f328a19c5fdbfac \
+            --instance-os-user ubuntu \
+            --ssh-public-key file:///tmp/wardrobe_key.pub \
+            --region ap-northeast-2
+
+          ssh \
+            -i /tmp/wardrobe_key \
+            -o StrictHostKeyChecking=no \
+            -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id i-09f328a19c5fdbfac --instance-connect-endpoint-id eice-0552b70076fcf78b9" \
+            ubuntu@i-09f328a19c5fdbfac \
+            "curl --fail --max-time 5 http://localhost:3000/health && curl --fail --max-time 5 http://localhost:3000/health/db"
+
+
+      - name: Restore EC2-A to ALB
+        if: ${{ always() && steps.drain_a.outputs.attempted == 'true' && steps.verify_a_outcome.outcome == 'success' }}
         env:
           TG_ARN: ${{ vars.WARDROBE_TG_ARN }}
           EC2_A: i-09f328a19c5fdbfac
