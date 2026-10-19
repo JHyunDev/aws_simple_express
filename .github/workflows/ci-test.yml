@@ -1,10 +1,14 @@
 name: CI Test
 
 
-on: #언제 실행할것인가?
+on:
   push:
     branches:
-      - main #main branch에 push했을때 이 yaml파일(런처 스크립트)을 실행
+      - main
+    paths:
+      - 'backend/**'
+
+  workflow_dispatch:
 
 concurrency:
   group: wardrobe-production-deploy #운영배포의 동시 실행 방지
