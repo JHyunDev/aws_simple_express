@@ -25,3 +25,20 @@ build/
 
 *.pem
 .env
+
+# Terraform common
+**/.terraform/*
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfplan
+**/crash.log
+**/*.tfvars
+**/*.auto.tfvars
+*.tfstate 
+*.tfstate.*
+
+# Optional: local override files
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
