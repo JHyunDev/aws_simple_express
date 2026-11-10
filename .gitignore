@@ -26,19 +26,42 @@ build/
 *.pem
 .env
 
-# Terraform common
+# Terraform working directory
 **/.terraform/*
-**/terraform.tfstate
-**/terraform.tfstate.*
-**/*.tfplan
-**/crash.log
-**/*.tfvars
-**/*.auto.tfvars
-*.tfstate 
+
+# Terraform State
+*.tfstate
 *.tfstate.*
+
+# Saved plan files
+*.tfplan
+tfplan
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+
+# Terraform crash logs
+crash.log
+crash.*.log
+
+# Local override configuration
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Provider schema generated during study
+provider-schema.json
 
 # Optional: local override files
 **/override.tf
 **/override.tf.json
 **/*_override.tf
 **/*_override.tf.json
+
+# Local Terraform lifecycle practice
+/terraform-lifecycle-lab/
+
+# Local Terraform learning directories
+/terraform/
